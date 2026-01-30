@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard Controllo Gestione</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; }
+    header { margin-bottom: 16px; }
+    h1 { margin: 0 0 6px 0; }
+    .muted { color: #666; font-size: 13px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px 14px; min-width: 200px; }
+    .kpi { font-size: 22px; font-weight: 700; }
+    input[type="file"] { padding: 8px; border: 1px solid #ddd; border-radius: 10px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+    th, td { border-bottom: 1px solid #eee; padding: 8px; }
+    th { background: #fafafa; }
+    .right { text-align: right; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Dashboard Controllo Gestione</h1>
+  <div class="muted">Carica un file CSV vendite per vedere totali e analisi</div>
+</header>
+
+<div class="row">
+  <input type="file" id="file" accept=".csv">
+</div>
+
+<div class="row" style="margin-top:12px;">
+  <div class="card">
+    <div class="muted">Totale incasso</div>
+    <div class="kpi" id="totale">€0,00</div>
+  </div>
+  <div class="card">
+    <div class="muted">Totale pezzi</div>
+    <div class="kpi" id="pezzi">0</div>
+  </div>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Prodotto</th>
+      <th class="right">Quantità</th>
+      <th class="right">Prezzo medio</th>
+      <th class="right">Totale</th>
+    </tr>
+  </thead>
+  <tbody id="tabella">
+    <tr><td colspan="4" class="muted">Carica un file CSV...</td></tr>
+  </tbody>
+</table>
+
+<script>
+document.getElementById('file').addEventListener('change', function(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(){
+    const righe = reader.result.split(/\r?\n/);
+    const dati = righe.slice(1).map(r => r.split(';')).filter(r => r.length >= 4);
+
+    let totale = 0;
+    let pezzi = 0;
+    let html = '';
+
+    dati.forEach(r => {
+      const prodotto = r[0];
+      const qta = parseFloat(r[1].replace(',', '.')) || 0;
+      const prezzo = parseFloat(r[2].replace(',', '.')) || 0;
+      const tot = parseFloat(r[3].replace(',', '.')) || 0;
+
+      totale += tot;
+      pezzi += qta;
+
+      html += `<tr>
+        <td>${prodotto}</td>
+        <td class="right">${qta}</td>
+        <td class="right">€${prezzo.toFixed(2)}</td>
+        <td class="right">€${tot.toFixed(2)}</td>
+      </tr>`;
+    });
+
+    document.getElementById('totale').innerText = totale.toLocaleString('it-IT',{style:'currency',currency:'EUR'});
+    document.getElementById('pezzi').innerText = pezzi;
+    document.getElementById('tabella').innerHTML = html || '<tr><td colspan="4">Nessun dato</td></tr>';
+  };
+  reader.readAsText(file);
+});
+</script>
+
+</body>
+</html>
