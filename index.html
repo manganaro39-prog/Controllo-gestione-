@@ -1,137 +1,215 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="it">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dashboard Controllo Gestione</title>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestionale Civico3 - Controllo Totale</title>
 
 <style>
-body { font-family: Arial; margin: 24px; }
-h1 { margin-bottom: 10px; }
-.card {
-border:1px solid #ddd;
-border-radius:10px;
-padding:15px;
-margin:10px 0;
-display:inline-block;
-min-width:200px;
+body {
+    font-family: Arial;
+    margin: 20px;
+    background: #f5f6fa;
 }
-table {
-width:100%;
-border-collapse: collapse;
-margin-top:20px;
-}
-th, td {
-border-bottom:1px solid #eee;
-padding:8px;
-}
-th { background:#f5f5f5; }
-</style>
-</head>
 
+h1 {
+    margin-bottom: 5px;
+}
+
+.box {
+    background: white;
+    padding: 15px;
+    margin: 10px 0;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.flex {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.kpi {
+    font-size: 24px;
+    font-weight: bold;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+}
+
+th, td {
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+}
+
+th {
+    background: #f0f0f0;
+}
+</style>
+
+</head>
 <body>
 
-<h1>Dashboard Controllo Gestione</h1>
+<h1>Gestionale Civico3</h1>
+<div>Carica PDF EasyRetail o CSV</div>
 
-<input type="file" id="pdfFile" accept=".pdf">
+<input type="file" id="fileInput">
 
-<div class="card">
-Totale incasso
-<div id="totale">0 €</div>
+<div class="flex">
+
+<div class="box">
+Incasso totale
+<div class="kpi" id="incasso">0 €</div>
 </div>
 
-<div class="card">
+<div class="box">
 Totale pezzi
-<div id="pezzi">0</div>
+<div class="kpi" id="pezzi">0</div>
 </div>
 
-<table>
+<div class="box">
+Numero prodotti
+<div class="kpi" id="prodotti">0</div>
+</div>
+
+</div>
+
+<h2>Vendite</h2>
+
+<table id="tabella">
 <thead>
 <tr>
 <th>Prodotto</th>
 <th>Quantità</th>
-<th>Totale</th>
+<th>Incasso</th>
 </tr>
 </thead>
-<tbody id="tabella"></tbody>
+<tbody>
+</tbody>
 </table>
 
 <script>
 
-pdfjsLib.GlobalWorkerOptions.workerSrc =
-'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+document.getElementById("fileInput").addEventListener("change", function(e){
 
-document.getElementById('pdfFile').addEventListener('change', async function(e){
+const file = e.target.files[0]
 
-const file = e.target.files[0];
-const reader = new FileReader();
+if(file.name.endsWith(".csv")){
 
-reader.onload = async function(){
+const reader = new FileReader()
 
-const pdf = await pdfjsLib.getDocument(reader.result).promise;
+reader.onload = function(){
 
-let totaleIncasso = 0;
-let totalePezzi = 0;
-let prodotti = {};
-
-for(let p=1; p<=pdf.numPages; p++){
-
-const page = await pdf.getPage(p);
-const content = await page.getTextContent();
-
-const text = content.items.map(i => i.str).join(" ");
-
-const regex = /([A-Z0-9 \/]+)\s+(\d+)\s+€([\d\.,]+)/g;
-
-let match;
-
-while(match = regex.exec(text)){
-
-let nome = match[1].trim();
-let qty = parseInt(match[2]);
-let totale = parseFloat(match[3].replace(",", "."));
-
-if(!prodotti[nome]) prodotti[nome] = {qty:0, tot:0};
-
-prodotti[nome].qty += qty;
-prodotti[nome].tot += totale;
-
-totalePezzi += qty;
-totaleIncasso += totale;
+parseCSV(reader.result)
 
 }
 
+reader.readAsText(file)
+
 }
 
-document.getElementById("totale").innerText =
-totaleIncasso.toFixed(2) + " €";
+else if(file.name.endsWith(".pdf")){
 
-document.getElementById("pezzi").innerText =
-totalePezzi;
+const reader = new FileReader()
 
-let html = "";
+reader.onload = function(){
 
-for(let nome in prodotti){
+parsePDF(reader.result)
 
-html += `
+}
+
+reader.readAsText(file)
+
+}
+
+})
+
+function parseCSV(text){
+
+const righe = text.split("\n")
+
+let totale = 0
+let pezzi = 0
+
+const tabella = document.querySelector("#tabella tbody")
+tabella.innerHTML = ""
+
+righe.slice(1).forEach(riga => {
+
+const col = riga.split(",")
+
+if(col.length < 4) return
+
+const prodotto = col[1]
+const quantita = parseFloat(col[2])
+const incasso = parseFloat(col[4])
+
+totale += incasso
+pezzi += quantita
+
+tabella.innerHTML += `
 <tr>
-<td>${nome}</td>
-<td>${prodotti[nome].qty}</td>
-<td>${prodotti[nome].tot.toFixed(2)} €</td>
+<td>${prodotto}</td>
+<td>${quantita}</td>
+<td>${incasso.toFixed(2)} €</td>
 </tr>
-`;
+`
+
+})
+
+document.getElementById("incasso").innerText = totale.toFixed(2)+" €"
+document.getElementById("pezzi").innerText = pezzi
+document.getElementById("prodotti").innerText = tabella.rows.length
 
 }
 
-document.getElementById("tabella").innerHTML = html;
+function parsePDF(text){
 
-};
+let totale = 0
+let pezzi = 0
 
-reader.readAsArrayBuffer(file);
+const tabella = document.querySelector("#tabella tbody")
+tabella.innerHTML = ""
 
-});
+const righe = text.split("\n")
+
+righe.forEach(riga=>{
+
+if(riga.includes("€")){
+
+const parti = riga.split(" ")
+
+const prezzo = parseFloat(parti[parti.length-1].replace("€","").replace(",","."))
+const quantita = parseFloat(parti[parti.length-2])
+
+if(!isNaN(prezzo) && !isNaN(quantita)){
+
+totale += prezzo
+pezzi += quantita
+
+tabella.innerHTML += `
+<tr>
+<td>${parti[0]}</td>
+<td>${quantita}</td>
+<td>${prezzo.toFixed(2)} €</td>
+</tr>
+`
+
+}
+
+}
+
+})
+
+document.getElementById("incasso").innerText = totale.toFixed(2)+" €"
+document.getElementById("pezzi").innerText = pezzi
+document.getElementById("prodotti").innerText = tabella.rows.length
+
+}
 
 </script>
 
